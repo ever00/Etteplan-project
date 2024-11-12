@@ -1,11 +1,22 @@
 import numpy as np
 import open3d as o3d
-import matplotlib.pyplot as plt
 from PIL import Image
-import random 
+import sys
+import os
 
-RES = 0.00075
-#RES = 0.00015 - #picture seems to be black, but its not, you have to zoom in
+#'Code Inspiration from https://github.com/collector-m/lidar_projection/tree/master '
+
+#'RUN CODE like: (etteplan) C:>python C:\Users\norad\ETTEPLAN\CODE\3D_to_2D\3D_to_2D_with_z_coordinate.py  D:\\data_downsampled10_without_ears0_01 0.0005'
+
+#RES = 0.00075
+#RES = 0.00015 #picture seems to be black, but its not, you have to zoom in
+#INPUT_FOLDER='D:\\data_downsampled10_without_ears0_01'
+INPUT_FOLDER = sys.argv[1]
+RES = float(sys.argv[2])
+
+folder_name = '2d_Images_res_' + str(RES)
+OUTPUT_FOLDER = os.path.join(INPUT_FOLDER, folder_name)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 def scale_to_255(a, min_val, max_val, dtype=np.uint8):
     """Scales an array of values from a given min-max range to 0-255."""
@@ -73,13 +84,9 @@ def point_cloud_to_top_view(points, side_range=(-0.65, 0.65), fwd_range=(-0.42, 
     im[y_img, x_img, 1] = scale_to_255(g_points, min_val=0, max_val=1)  # Green channel
     im[y_img, x_img, 2] = z_scaled  # Blue channel based on z-coordinates
 
-    # Save or display the image
+    # Save
     if saveto:
         Image.fromarray(im).save(saveto)
-    else:
-        plt.imshow(im)
-        plt.axis('off')
-        plt.show()
 
 def load_pc_from_pcd(pcd_path):
     """Loads point cloud data from a PCD file using Open3D."""
@@ -90,8 +97,22 @@ def load_pc_from_pcd(pcd_path):
     # Combine points and colors into an N x 6 array
     return np.hstack((points, colors))
 
-random_number = random.randint(1, 99)
-
-# Example call
-points = load_pc_from_pcd('C:\\Users\\norad\\ETTEPLAN\\DATA\\chip_without_ears_scratches.ply') 
-point_cloud_to_top_view(points, saveto=f'C:\\Users\\norad\\ETTEPLAN\\DATA\\TO_2D\\chip_without_ears_{random_number}_res{RES}_withZ.png')
+# Process all .ply files in the input folder
+for filename in os.listdir(INPUT_FOLDER):
+    if filename.endswith('.ply'):
+        # Full path to the .ply file
+        file_path = os.path.join(INPUT_FOLDER, filename)
+        
+        print(f"Processing file: {file_path}")
+        
+        # Load the point cloud
+        points = load_pc_from_pcd(file_path)
+        
+        # Create output filename: original name + resolution
+        file_basename = os.path.splitext(filename)[0]
+        output_filename = f"{file_basename}_res_{RES}.png"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        
+        # Generate and save the 2D top view image
+        point_cloud_to_top_view(points, saveto=output_path)
+        print(f"Image saved as: {output_path}")
